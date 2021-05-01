@@ -1,6 +1,6 @@
 use bevy::{
 	pbr::AmbientLight, prelude::*,
-	input::{keyboard::KeyCode, Input, mouse::*},
+	input::{keyboard::*, mouse::*, Input, ElementState},
 	render::camera::*,
 };
 
@@ -15,8 +15,11 @@ fn main() {
         .add_plugins(DefaultPlugins)
 		
         .add_startup_system(setup.system())
+		.add_startup_system(hello_world.system())
 		.add_startup_system(spawn_camera.system())
+		
 		.add_system(pan_orbit_camera.system())
+		
         .run();
 }
 
@@ -56,11 +59,16 @@ impl Default for PanOrbitCamera {
     }
 }
 
+fn hello_world() {
+	println!("Hello");
+} 
+
 /// Pan the camera with middle mouse click, zoom with scroll wheel, orbit with right mouse click.
 fn pan_orbit_camera(
     windows: Res<Windows>,
     mut ev_motion: EventReader<MouseMotion>,
     mut ev_scroll: EventReader<MouseWheel>,
+	mut ev_keyboard: EventReader<KeyboardInput>,
     input_mouse: Res<Input<MouseButton>>,
     mut query: Query<(&mut PanOrbitCamera, &mut Transform, &PerspectiveProjection)>,
 ) {
@@ -89,8 +97,28 @@ fn pan_orbit_camera(
     if input_mouse.just_released(orbit_button) || input_mouse.just_pressed(orbit_button) {
         orbit_button_changed = true;
     }
-
+	
     for (mut pan_orbit, mut transform, projection) in query.iter_mut() {
+		for kb_event in ev_keyboard.iter() {
+			if kb_event.state == ElementState::Pressed {
+				let rot_matrix = Mat3::from_quat(transform.rotation);
+				match kb_event.key_code.unwrap() {
+					KeyCode::W => {	transform.translation += rot_matrix * Vec3::unit_y();
+										pan_orbit.focus 		+= rot_matrix * Vec3::unit_y()},
+										
+					KeyCode::A => {	transform.translation -= rot_matrix * Vec3::unit_x();
+										pan_orbit.focus 		-= rot_matrix * Vec3::unit_x()},
+										
+					KeyCode::S => {	transform.translation -= rot_matrix * Vec3::unit_y();
+										pan_orbit.focus 		-= rot_matrix * Vec3::unit_y()},
+										
+					KeyCode::D => {	transform.translation += rot_matrix * Vec3::unit_x();
+										pan_orbit.focus 		+= rot_matrix * Vec3::unit_x()},
+					_ => println!("?")
+				}
+			}
+		}
+		
         if orbit_button_changed {
             // only check for upside down when orbiting started or ended this frame
             // if the camera is "upside" down, panning horizontally would be inverted, so invert the input to make it correct
@@ -134,7 +162,8 @@ fn pan_orbit_camera(
             // parent = x and y rotation
             // child = z-offset
             let rot_matrix = Mat3::from_quat(transform.rotation);
-            transform.translation = pan_orbit.focus + rot_matrix.mul_vec3(Vec3::new(0.0, 0.0, pan_orbit.radius));
+			let translation_z_rad = Vec3::new(0., 0., pan_orbit.radius);
+            transform.translation = pan_orbit.focus + rot_matrix.mul_vec3(translation_z_rad);
         }
     }
 }
