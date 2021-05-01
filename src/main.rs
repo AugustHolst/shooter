@@ -19,18 +19,22 @@ fn main() {
 		.add_startup_system(spawn_camera.system())
 		
 		.add_system(pan_orbit_camera.system())
-		
+		.add_system(spawn_cube.system())
         .run();
 }
 
 
 
 /// set up a simple 3D scene
-fn setup (mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, mut materials: ResMut<Assets<StandardMaterial>>) {
+fn setup (
+	mut commands: Commands, 
+	mut meshes: ResMut<Assets<Mesh>>, 
+	mut materials: ResMut<Assets<StandardMaterial>>
+){
 	commands.
 		spawn_bundle(PbrBundle {
 			mesh: meshes.add(Mesh::from(shape::Plane { size: 5.0 })),
-			material: materials.add(Color::rgb(0.3, 0.5, 0.3).into()),
+			material: materials.add(Color::WHITE.into()),
 			..Default::default()
 		});
 	
@@ -187,4 +191,22 @@ fn spawn_camera(mut commands: Commands) {
         radius,
         ..Default::default()
     });
+}
+
+fn spawn_cube(
+	mut commands: Commands,
+	mut ev_motion: EventReader<MouseMotion>,
+	input_mouse: Res<Input<MouseButton>>,
+	mut meshes: ResMut<Assets<Mesh>>,
+	mut materials: ResMut<Assets<StandardMaterial>>
+){
+	let left_mouse = MouseButton::Left;
+	if input_mouse.just_pressed(left_mouse) {
+		commands.
+			spawn_bundle(PbrBundle {
+				mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0})),
+				transform: Transform::from_translation(Vec3::Y * 10.0),
+				..Default::default()
+			});
+	}
 }

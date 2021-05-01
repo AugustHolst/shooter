@@ -8,6 +8,6 @@ edition = "2018"
 
 [dependencies]
 bevy = "0.5"
-
+bevy_rapier3d = "*"
 
 # cargo run --features bevy/dynamic
