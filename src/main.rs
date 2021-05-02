@@ -2,7 +2,9 @@ use bevy::{
 	pbr::AmbientLight, prelude::*,
 	input::{keyboard::*, mouse::*, Input, ElementState},
 	render::camera::*,
+	diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin}
 };
+use heron::prelude::*;
 
 fn main() {
     App::build()
@@ -13,13 +15,19 @@ fn main() {
         .insert_resource(Msaa { samples: 4 })
 		
         .add_plugins(DefaultPlugins)
-		
-        .add_startup_system(setup.system())
-		.add_startup_system(hello_world.system())
+        
+        .add_plugin(LogDiagnosticsPlugin::default())
+        .add_plugin(FrameTimeDiagnosticsPlugin::default())
+        
+		.add_plugin(PhysicsPlugin::default())
+		.insert_resource(Gravity::from(Vec3::new(0.0, -9.81, 0.0)))
+        
+        .add_startup_system(setup.system())		
 		.add_startup_system(spawn_camera.system())
 		
-		.add_system(pan_orbit_camera.system())
 		.add_system(spawn_cube.system())
+		.add_system(pan_orbit_camera.system())
+		
         .run();
 }
 
@@ -36,7 +44,9 @@ fn setup (
 			mesh: meshes.add(Mesh::from(shape::Plane { size: 5.0 })),
 			material: materials.add(Color::WHITE.into()),
 			..Default::default()
-		});
+		})
+		.insert(Body::Cuboid { half_extends: Vec3::new(2.5, 0.0, 2.5) })
+		.insert(BodyType::Static);
 	
     commands
         .spawn_bundle(LightBundle {
@@ -62,10 +72,6 @@ impl Default for PanOrbitCamera {
         }
     }
 }
-
-fn hello_world() {
-	println!("Hello");
-} 
 
 /// Pan the camera with middle mouse click, zoom with scroll wheel, orbit with right mouse click.
 fn pan_orbit_camera(
@@ -205,8 +211,19 @@ fn spawn_cube(
 		commands.
 			spawn_bundle(PbrBundle {
 				mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0})),
-				transform: Transform::from_translation(Vec3::Y * 10.0),
+				material: materials.add(Color::rgb(0.1, 0.1, 0.75).into()),
+				transform: Transform::from_translation(Vec3::unit_y() * 10.0),
 				..Default::default()
-			});
+			})
+			.insert(Body::Cuboid { half_extends: Vec3::new(0.5, 0.5, 0.5) })
+
+		    // Optionally define a type (if absent, the body will be *dynamic*)
+		    .insert(BodyType::Dynamic)
+		    .insert(PhysicMaterial {
+		    	restitution: 0.1,
+		    	density: 0.1,
+		    	friction: 0.5
+		    });
+				
 	}
 }
