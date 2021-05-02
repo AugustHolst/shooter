@@ -4,6 +4,7 @@ use bevy::{
 	render::camera::*,
 	diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin}
 };
+use bevy_mod_raycast::{DefaultRaycastingPlugin, RayCastMesh, RayCastMethod, RayCastSource, RaycastSystem};
 use heron::prelude::*;
 
 fn main() {
@@ -19,8 +20,16 @@ fn main() {
         .add_plugin(LogDiagnosticsPlugin::default())
         .add_plugin(FrameTimeDiagnosticsPlugin::default())
         
-		.add_plugin(PhysicsPlugin::default())
+        .add_plugin(PhysicsPlugin::default())
 		.insert_resource(Gravity::from(Vec3::new(0.0, -9.81, 0.0)))
+        
+        .add_plugin(DefaultRaycastingPlugin::<MyRaycastSet>::default())
+        .add_system_to_stage(
+            CoreStage::PostUpdate,
+            update_raycast_with_cursor
+                .system()
+                .before(RaycastSystem::BuildRays),
+        )
         
         .add_startup_system(setup.system())		
 		.add_startup_system(spawn_camera.system())
@@ -46,8 +55,9 @@ fn setup (
 			..Default::default()
 		})
 		.insert(Body::Cuboid { half_extends: Vec3::new(2.5, 0.0, 2.5) })
-		.insert(BodyType::Static);
-	
+		.insert(BodyType::Static)
+		.insert(RayCastMesh::<MyRaycastSet>::default());
+		
     commands
         .spawn_bundle(LightBundle {
             transform: Transform::from_xyz(-1.0, 0.0, 5.0),
@@ -196,7 +206,7 @@ fn spawn_camera(mut commands: Commands) {
     }).insert(PanOrbitCamera {
         radius,
         ..Default::default()
-    });
+    }).insert(RayCastSource::<MyRaycastSet>::new());
 }
 
 fn spawn_cube(
@@ -223,7 +233,26 @@ fn spawn_cube(
 		    	restitution: 0.1,
 		    	density: 0.1,
 		    	friction: 0.5
-		    });
+		    })
+		    .insert(RayCastMesh::<MyRaycastSet>::default());
 				
 	}
+}
+
+// This is a unit struct we will use to mark our generic `RayCastMesh`s and `RayCastSource` as part
+// of the same group, or "RayCastSet". For more complex use cases, you might use this to associate
+// some meshes with one ray casting source, and other meshes with a different ray casting source."
+struct MyRaycastSet;
+
+// Update our `RayCastSource` with the current cursor position every frame.
+fn update_raycast_with_cursor(
+    mut cursor: EventReader<CursorMoved>,
+    mut query: Query<&mut RayCastSource<MyRaycastSet>>,
+) {
+    for mut pick_source in &mut query.iter_mut() {
+        // Grab the most recent cursor event if it exists:
+        if let Some(cursor_latest) = cursor.iter().last() {
+            pick_source.cast_method = RayCastMethod::Screenspace(cursor_latest.position);
+        }
+    }
 }

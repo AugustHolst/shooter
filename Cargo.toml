@@ -11,5 +11,6 @@ edition = "2018"
 [dependencies]
 bevy = "0.5"
 heron = "0.5.1"
+bevy_mod_raycast = "0.2.2"
 
 # cargo run --features bevy/dynamic
