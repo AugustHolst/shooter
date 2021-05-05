@@ -39,7 +39,7 @@ fn spawn_player(
 			material: materials.add(Color::WHITE.into()),
 			..Default::default()
 		})
-		.insert(Body::Cuboid { half_extends: Vec3::new(2.5, 0.0, 2.5) })
+		.insert(Body::Cuboid { half_extends: Vec3::new(7.5, 0.0, 7.5) })
 		.insert(BodyType::Static)
 		.insert(RayCastMesh::<MyRaycastSet>::default());
 	
@@ -52,22 +52,54 @@ fn spawn_player(
 			material: materials.add(Color::TEAL.into()),
 			transform: Transform::from_translation(Vec3::new(0.0, 0.5, 0.0)),
 			..Default::default()
-		}).id();
+		})
+		.insert(Body::Cuboid { half_extends: Vec3::ONE * 0.5})
+		.insert(BodyType::Dynamic)
+		.id();
 	println!("{}", player.id());
 }
 
 fn control_player(
 	mut commands: Commands,
 	mut ev_cursor_motion: EventReader<CursorMoved>,
-	mut query: Query<(&Player, &mut Transform)>,
+	mut ev_keyboard: EventReader<KeyboardInput>,
+	mut query: Query<(Entity, &mut Transform, With<Player>)>,
 	mut query_ray: Query<&mut RayCastSource<MyRaycastSet>>
 ){
+	let (player_Ent, mut transform, _) = query.single_mut().expect("There is always a player");
+	let internsection_pos : Vec3;
+	let (mut w_pressed, mut a_pressed, mut s_pressed, mut d_pressed) = (false, false, false, false);
+	for kb_input in ev_keyboard.iter() {
+		match kb_input.key_code.unwrap() {
+			KeyCode::W =>	{	w_pressed = true},
+								
+			KeyCode::A => 	{	a_pressed = true},
+								
+			KeyCode::S => 	{	s_pressed = true},
+								
+			KeyCode::D => 	{	d_pressed = true},
+			_ 			=> {println!("?")}
+		}
+	}
+	let mut move_vec = Vec3::ZERO;
+	let rot_matrix = Mat3::from_rotation_y(std::f32::consts::PI/4.0);
+	if w_pressed || a_pressed || s_pressed || d_pressed {
+		if w_pressed { move_vec += rot_matrix * Vec3::Z };
+		if a_pressed { move_vec += rot_matrix * Vec3::X };
+		if s_pressed { move_vec -= rot_matrix * Vec3::Z };
+		if d_pressed { move_vec -= rot_matrix * Vec3::X };
+		println!("{}", move_vec.to_string());
+	}
+	
+	commands.entity(player_Ent).insert(Velocity::from_linear(move_vec));
+	
+	
 	if let Some(cursor) = ev_cursor_motion.iter().last() {
-		let (player, mut transform) = query.single_mut().expect("There is always a player");
 		for mut ray_src in &mut query_ray.iter_mut() {
 			ray_src.cast_method = RayCastMethod::Screenspace(cursor.position);
 			if let Some(intersection) = ray_src.intersect_top() {
-				let intersection_pos = intersection.1.position();
+				let mut intersection_pos = intersection.1.position();
+				intersection_pos.y = transform.translation.y;
 				transform.look_at(intersection_pos, Vec3::Y);
 			}
 		}
