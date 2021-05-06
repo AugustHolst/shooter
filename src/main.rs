@@ -60,36 +60,23 @@ fn spawn_player(
 }
 
 fn control_player(
+	time: Res<Time>,
+	keyboard_input: Res<Input<KeyCode>>,
 	mut commands: Commands,
 	mut ev_cursor_motion: EventReader<CursorMoved>,
-	mut ev_keyboard: EventReader<KeyboardInput>,
 	mut query: Query<(Entity, &mut Transform, With<Player>)>,
 	mut query_ray: Query<&mut RayCastSource<MyRaycastSet>>
 ){
 	let (player_Ent, mut transform, _) = query.single_mut().expect("There is always a player");
 	let internsection_pos : Vec3;
-	let (mut w_pressed, mut a_pressed, mut s_pressed, mut d_pressed) = (false, false, false, false);
-	for kb_input in ev_keyboard.iter() {
-		match kb_input.key_code.unwrap() {
-			KeyCode::W =>	{	w_pressed = true},
-								
-			KeyCode::A => 	{	a_pressed = true},
-								
-			KeyCode::S => 	{	s_pressed = true},
-								
-			KeyCode::D => 	{	d_pressed = true},
-			_ 			=> {println!("?")}
-		}
-	}
+	
 	let mut move_vec = Vec3::ZERO;
 	let rot_matrix = Mat3::from_rotation_y(std::f32::consts::PI/4.0);
-	if w_pressed || a_pressed || s_pressed || d_pressed {
-		if w_pressed { move_vec += rot_matrix * Vec3::Z };
-		if a_pressed { move_vec += rot_matrix * Vec3::X };
-		if s_pressed { move_vec -= rot_matrix * Vec3::Z };
-		if d_pressed { move_vec -= rot_matrix * Vec3::X };
-		println!("{}", move_vec.to_string());
-	}
+	
+	if keyboard_input.pressed(KeyCode::W) { move_vec += rot_matrix * Vec3::Z };
+	if keyboard_input.pressed(KeyCode::A) { move_vec += rot_matrix * Vec3::X };
+	if keyboard_input.pressed(KeyCode::S) { move_vec -= rot_matrix * Vec3::Z };
+	if keyboard_input.pressed(KeyCode::D) { move_vec -= rot_matrix * Vec3::X };
 	
 	commands.entity(player_Ent).insert(Velocity::from_linear(move_vec));
 	
